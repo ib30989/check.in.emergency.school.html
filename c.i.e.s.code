@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student or Admin Login</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            width: 50%;
+        }
+        button {
+            background-color: #28a745;
+            color: white;
+            padding: 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+        .hidden {
+            display: none;
+        }
+        textarea, input {
+            display: block;
+            width: 100%;
+            padding: 8px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        table {
+            width: 100%;
+            margin-top: 10px;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .checked-in {
+            background-color: lightgreen;
+        }
+        .not-checked-in {
+            background-color: lightcoral;
+        }
+    </style>
+    <script>
+        let studentDatabase = JSON.parse(localStorage.getItem('studentDatabase')) || {};
+        let checkedInStudents = new Set(JSON.parse(localStorage.getItem('checkedInStudents')) || []);
+
+        function updateDatabaseView() {
+            let tableBody = document.getElementById("studentTableBody");
+            tableBody.innerHTML = "";
+            for (let id in studentDatabase) {
+                let row = document.createElement("tr");
+                row.className = checkedInStudents.has(id) ? "checked-in" : "not-checked-in";
+                row.innerHTML = `<td>${id}</td><td>${studentDatabase[id].first} ${studentDatabase[id].middle} ${studentDatabase[id].last}</td>`;
+                tableBody.appendChild(row);
+            }
+            localStorage.setItem('studentDatabase', JSON.stringify(studentDatabase));
+        }
+
+        function addStudents() {
+            let inputText = document.getElementById("addStudentsInput").value.trim();
+            let lines = inputText.split("\n");
+            lines.forEach(line => {
+                let parts = line.split(",").map(x => x.trim());
+                if (parts.length === 4) {
+                    let [id, first, middle, last] = parts;
+                    studentDatabase[id] = { first, middle, last };
+                }
+            });
+            document.getElementById("addStudentsInput").value = "";
+            updateDatabaseView();
+        }
+
+        function removeStudents() {
+            let inputText = document.getElementById("removeStudentsInput").value.trim();
+            let lines = inputText.split("\n");
+            lines.forEach(id => {
+                delete studentDatabase[id.trim()];
+            });
+            document.getElementById("removeStudentsInput").value = "";
+            updateDatabaseView();
+        }
+
+        function showSection(section) {
+            document.getElementById("homeSection").classList.add("hidden");
+            document.getElementById("studentSection").classList.add("hidden");
+            document.getElementById("adminLoginSection").classList.add("hidden");
+            document.getElementById("adminPanelSection").classList.add("hidden");
+            document.getElementById("addStudents").classList.add("hidden");
+            document.getElementById("removeStudents").classList.add("hidden");
+
+            document.getElementById(section).classList.remove("hidden");
+
+            if (section !== 'adminLoginSection') {
+                document.getElementById("adminCode").value = '';  
+            }
+        }
+
+        function verifyAdminCode() {
+            const code = document.getElementById("adminCode").value;
+            if (code === "123456") {
+                showSection("adminPanelSection");
+                updateDatabaseView();
+            } else {
+                alert("Incorrect admin code. Access denied.");
+            }
+        }
+
+        function checkInStudent() {
+            let studentId = document.getElementById("studentIdInput").value.trim();
+            let statusMessage = document.getElementById("studentStatusMessage");
+
+            if (studentDatabase[studentId]) {
+                if (checkedInStudents.has(studentId)) {
+                    statusMessage.textContent = "You are already checked in!";
+                    statusMessage.style.color = "green";
+                } else {
+                    checkedInStudents.add(studentId);
+                    localStorage.setItem('checkedInStudents', JSON.stringify(Array.from(checkedInStudents)));
+                    statusMessage.textContent = "You have successfully checked in!";
+                    statusMessage.style.color = "green";
+                }
+            } else {
+                statusMessage.textContent = "Invalid Student ID. Please try again.";
+                statusMessage.style.color = "red";
+            }
+
+            document.getElementById("studentIdInput").value = '';
+        }
+
+        // New function to clear all students with manual admin code input
+        function clearDatabase() {
+            const code = document.getElementById("clearAdminCode").value;
+            if (code === "123456") {
+                studentDatabase = {};
+                checkedInStudents.clear();
+                localStorage.setItem('studentDatabase', JSON.stringify(studentDatabase));
+                localStorage.setItem('checkedInStudents', JSON.stringify(Array.from(checkedInStudents)));
+                updateDatabaseView();
+                document.getElementById("clearAdminCode").value = ''; // Clear the admin code input after reset
+                alert("All students have been cleared!");
+            } else {
+                alert("Incorrect admin code. Access denied.");
+            }
+        }
+
+        // New function to reset all check-ins with admin code input
+        function resetCheckIns() {
+            const code = document.getElementById("resetAdminCode").value;
+            if (code === "123456") {
+                checkedInStudents.clear(); // Remove all checked-in students
+                localStorage.setItem('checkedInStudents', JSON.stringify(Array.from(checkedInStudents))); // Save to localStorage
+                updateDatabaseView(); // Update the table view to reflect the changes
+                document.getElementById("resetAdminCode").value = ''; // Clear the admin code input after reset
+                alert("All check-in statuses have been reset!");
+            } else {
+                alert("Incorrect admin code. Access denied.");
+            }
+        }
+    </script>
+</head>
+<body>
+    <div id="homeSection" class="container">
+        <h2>Welcome to the Emergency System</h2>
+        <button onclick="showSection('studentSection')">Student</button>
+        <button onclick="showSection('adminLoginSection')">Admin</button>
+    </div>
+
+    <div id="studentSection" class="container hidden">
+        <h3>Student Area</h3>
+        <p>Welcome, student! Please enter your student ID to check in.</p>
+        
+        <input type="text" id="studentIdInput" placeholder="Enter Student ID">
+        <button onclick="checkInStudent()">Check In</button>
+        
+        <p id="studentStatusMessage"></p>
+        
+        <button onclick="showSection('homeSection')">Home</button>
+    </div>
+
+    <div id="adminLoginSection" class="container hidden">
+        <h3>Admin Login</h3>
+        <input type="password" id="adminCode" placeholder="Enter Admin Code">
+        <button onclick="verifyAdminCode()">Submit</button>
+        <button onclick="showSection('homeSection')">Home</button>
+    </div>
+
+    <div id="adminPanelSection" class="container hidden">
+        <h3>Admin Panel</h3>
+        <p>Welcome, Admin! Here you can manage the student database and other settings.</p>
+        <table>
+            <thead>
+                <tr>
+                    <th>Student ID</th>
+                    <th>Name</th>
+                </tr>
+            </thead>
+            <tbody id="studentTableBody"></tbody>
+        </table>
+        <button onclick="showSection('addStudents')">Add Students</button>
+        <button onclick="showSection('removeStudents')">Remove Students</button>
+        <button onclick="showSection('homeSection')">Home</button>
+
+        <h4>Clear All Students</h4>
+        <p>Enter admin code to clear all students from the database:</p>
+        <input type="password" id="clearAdminCode" placeholder="Enter Admin Code">
+        <button onclick="clearDatabase()">Clear All Students</button>
+
+        <h4>Reset All Check-ins</h4>
+        <p>Enter admin code to reset the check-in status of all students:</p>
+        <input type="password" id="resetAdminCode" placeholder="Enter Admin Code">
+        <button onclick="resetCheckIns()">Reset All Check-ins</button>
+    </div>
+
+    <div id="addStudents" class="container hidden">
+        <h3>Add Students</h3>
+        <textarea id="addStudentsInput" placeholder="Enter each student as: ID, First, Middle, Last"></textarea>
+        <button onclick="addStudents()">Add Students</button>
+        <button onclick="showSection('adminPanelSection')">Back to Database</button>
+    </div>
+
+    <div id="removeStudents" class="container hidden">
+        <h3>Remove Students</h3>
+        <textarea id="removeStudentsInput" placeholder="Enter Student IDs, one per line"></textarea>
+        <button onclick="removeStudents()">Remove Students</button>
+        <button onclick="showSection('adminPanelSection')">Back to Database</button>
+    </div>
+</body>
+</html>
